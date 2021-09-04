@@ -75,4 +75,39 @@ public class UserServiceTest {
                 .extracting(UserDTO::getType)
                 .containsExactlyInAnyOrder(UserType.ADMIN, UserType.MODERATOR);
     }
+
+    @Test
+    public void testWithDesc() {
+        final UserDTO dto = userService.getAllUsers().get(0);
+
+        assertThat(dto.getAge())
+                .as("Checking the age of user with name %s failed", dto.getName())
+                .isEqualTo(21); // Change to some other value to see the desc
+    }
+
+    @Test
+    public void testWithErrorMessageOverride() {
+        final UserDTO dto = userService.getAllUsers().get(0);
+
+        final int expectedAge = 21;
+        assertThat(dto.getAge())
+                .withFailMessage("Users age should be %s", expectedAge)
+                .isEqualTo(expectedAge);
+    }
+
+    @Test
+    public void testExceptions() {
+        assertThatThrownBy(() -> {
+            UserDTO user = userService.getAllUsers().get(55);
+        }).isInstanceOf(IndexOutOfBoundsException.class)
+        .hasMessageContaining("Index 55")
+        .hasMessage("Index 55 out of bounds for length 3")
+        .hasMessageStartingWith("Index 55 out")
+        .hasMessageEndingWith("length 3")
+        .hasStackTraceContaining("java.lang.ArrayIndexOutOfBoundsException");
+
+        assertThatCode(() -> {
+            UserDTO user = userService.getAllUsers().get(1);
+        }).doesNotThrowAnyException();
+    }
 }
