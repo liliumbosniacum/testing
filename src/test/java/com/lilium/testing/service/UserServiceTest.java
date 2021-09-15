@@ -1,22 +1,38 @@
 package com.lilium.testing.service;
 
 import com.lilium.testing.dto.UserDTO;
+import com.lilium.testing.dto.UserInfoDTO;
 import com.lilium.testing.dto.UserType;
-import org.assertj.core.api.Assertions;
+import com.lilium.testing.helper.UserProviderHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 
 public class UserServiceTest {
-
     private UserService userService;
+    private UserInfoService userInfoService;
 
     @BeforeEach
     public void setup() {
-        userService = new UserService();
+        userInfoService = mock(UserInfoService.class);
+
+        doAnswer(a -> {
+            final String userId = a.getArgument(0);
+            if (userId.equals("not-there")) {
+                return null;
+            }
+
+            return UserProviderHelper.getUserInfo(userId);
+        }).when(userInfoService).getUserInfo(anyString());
+
+        userService = new UserService(userInfoService);
     }
 
     @Test
@@ -109,5 +125,22 @@ public class UserServiceTest {
         assertThatCode(() -> {
             UserDTO user = userService.getAllUsers().get(1);
         }).doesNotThrowAnyException();
+    }
+
+    @Test
+    public void testGetUserInfos_NoUserIds() {
+        assertThat(userService.getUserInfos(null)).isEmpty();
+        assertThat(userService.getUserInfos(new ArrayList<>())).isEmpty();
+    }
+
+    @Test
+    public void testGetUserInfos() {
+        final List<UserDTO> allUsers = userService.getAllUsers();
+
+        final List<UserInfoDTO> userInfos = userService.getUserInfos(
+                List.of(allUsers.get(1).getId(), "not-there")
+        );
+
+        assertThat(userInfos).hasSize(1);
     }
 }
