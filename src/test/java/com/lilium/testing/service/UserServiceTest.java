@@ -3,7 +3,6 @@ package com.lilium.testing.service;
 import com.lilium.testing.dto.UserDTO;
 import com.lilium.testing.dto.UserInfoDTO;
 import com.lilium.testing.dto.UserType;
-import com.lilium.testing.helper.UserProviderHelper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -12,16 +11,18 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.*;
 
 public class UserServiceTest {
-    private UserService userService;
-    private UserInfoService userInfoService;
+    private UserService userServiceWithMock;
+    private UserService userServiceWithSpy;
+    private UserInfoService userInfoServiceMock;
+    private UserInfoService userInfoServiceSpy;
 
     @BeforeEach
     public void setup() {
-        userInfoService = mock(UserInfoService.class);
+        userInfoServiceMock = mock(UserInfoService.class);
+        userInfoServiceSpy = spy(new UserInfoService());
 
         doAnswer(a -> {
             final String userId = a.getArgument(0);
@@ -29,15 +30,18 @@ public class UserServiceTest {
                 return null;
             }
 
-            return UserProviderHelper.getUserInfo(userId);
-        }).when(userInfoService).getUserInfo(anyString());
+            final UserInfoDTO dto = new UserInfoDTO("1", "a", "n");
 
-        userService = new UserService(userInfoService);
+            return dto;
+        }).when(userInfoServiceMock).getUserInfo(anyString());
+
+        userServiceWithMock = new UserService(userInfoServiceMock);
+        userServiceWithSpy = new UserService(userInfoServiceSpy);
     }
 
     @Test
     void helloWorldTest() {
-        String helloWorld = userService.helloWorld();
+        String helloWorld = userServiceWithMock.helloWorld();
 
         assertThat(helloWorld).isNotNull();
         assertThat(helloWorld).isEqualTo("hello world");
@@ -45,7 +49,7 @@ public class UserServiceTest {
 
     @Test
     public void testGetAllUserNames() {
-        final List<String> names = userService.getAllUserNames();
+        final List<String> names = userServiceWithMock.getAllUserNames();
 
         assertThat(names)
                 .hasSize(3)
@@ -62,7 +66,7 @@ public class UserServiceTest {
 
     @Test
     public void testGetAllUsers() {
-        final List<UserDTO> allUsers = userService.getAllUsers();
+        final List<UserDTO> allUsers = userServiceWithMock.getAllUsers();
 
         assertThat(allUsers)
                 .hasSize(3)
@@ -84,7 +88,7 @@ public class UserServiceTest {
 
     @Test
     public void testGetAdminAndMods() {
-        final List<UserDTO> allAdminOrModUsers = userService.getAllAdminOrModUsers();
+        final List<UserDTO> allAdminOrModUsers = userServiceWithMock.getAllAdminOrModUsers();
 
         assertThat(allAdminOrModUsers)
                 .hasSize(2)
@@ -94,7 +98,7 @@ public class UserServiceTest {
 
     @Test
     public void testWithDesc() {
-        final UserDTO dto = userService.getAllUsers().get(0);
+        final UserDTO dto = userServiceWithMock.getAllUsers().get(0);
 
         assertThat(dto.getAge())
                 .as("Checking the age of user with name %s failed", dto.getName())
@@ -103,7 +107,7 @@ public class UserServiceTest {
 
     @Test
     public void testWithErrorMessageOverride() {
-        final UserDTO dto = userService.getAllUsers().get(0);
+        final UserDTO dto = userServiceWithMock.getAllUsers().get(0);
 
         final int expectedAge = 21;
         assertThat(dto.getAge())
@@ -114,7 +118,7 @@ public class UserServiceTest {
     @Test
     public void testExceptions() {
         assertThatThrownBy(() -> {
-            UserDTO user = userService.getAllUsers().get(55);
+            UserDTO user = userServiceWithMock.getAllUsers().get(55);
         }).isInstanceOf(IndexOutOfBoundsException.class)
         .hasMessageContaining("Index 55")
         .hasMessage("Index 55 out of bounds for length 3")
@@ -123,24 +127,35 @@ public class UserServiceTest {
         .hasStackTraceContaining("java.lang.ArrayIndexOutOfBoundsException");
 
         assertThatCode(() -> {
-            UserDTO user = userService.getAllUsers().get(1);
+            UserDTO user = userServiceWithMock.getAllUsers().get(1);
         }).doesNotThrowAnyException();
     }
 
     @Test
     public void testGetUserInfos_NoUserIds() {
-        assertThat(userService.getUserInfos(null)).isEmpty();
-        assertThat(userService.getUserInfos(new ArrayList<>())).isEmpty();
+        assertThat(userServiceWithMock.getUserInfos(null)).isEmpty();
+        assertThat(userServiceWithMock.getUserInfos(new ArrayList<>())).isEmpty();
     }
 
     @Test
-    public void testGetUserInfos() {
-        final List<UserDTO> allUsers = userService.getAllUsers();
+    public void testGetUserInfosWithMock() {
+        final List<UserInfoDTO> userInfos = userServiceWithMock.getUserInfos(
+                List.of("anything", "not-there")
+        );
 
-        final List<UserInfoDTO> userInfos = userService.getUserInfos(
+        assertThat(userInfos).hasSize(1);
+        verify(userInfoServiceMock, times(2)).getUserInfo(anyString());
+    }
+
+    @Test
+    public void testGetUserInfosWithSpy() {
+        final List<UserDTO> allUsers = userServiceWithSpy.getAllUsers();
+
+        final List<UserInfoDTO> userInfos = userServiceWithSpy.getUserInfos(
                 List.of(allUsers.get(1).getId(), "not-there")
         );
 
         assertThat(userInfos).hasSize(1);
+        verify(userInfoServiceSpy, times(2)).getUserInfo(anyString());
     }
 }
