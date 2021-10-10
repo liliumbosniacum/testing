@@ -5,8 +5,10 @@ import com.lilium.testing.dto.UserInfoDTO;
 import com.lilium.testing.dto.UserType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -151,11 +153,49 @@ public class UserServiceTest {
     public void testGetUserInfosWithSpy() {
         final List<UserDTO> allUsers = userServiceWithSpy.getAllUsers();
 
+        String id1 = allUsers.get(1).getId();
+        String id2 = "not-there";
+
         final List<UserInfoDTO> userInfos = userServiceWithSpy.getUserInfos(
-                List.of(allUsers.get(1).getId(), "not-there")
+                List.of(id1, id2)
         );
 
         assertThat(userInfos).hasSize(1);
-        verify(userInfoServiceSpy, times(2)).getUserInfo(anyString());
+        final ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(userInfoServiceSpy, times(2)).getUserInfo(argumentCaptor.capture());
+
+        final List<String> capturedIds = argumentCaptor.getAllValues();
+        assertThat(capturedIds).containsExactlyInAnyOrder(id1, id2);
+    }
+
+    @Test
+    public void testGetUserInfosVerifications() {
+        final String id = "anything";
+        final List<UserInfoDTO> userInfos = userServiceWithMock.getUserInfos(
+                Collections.singletonList(id)
+        );
+
+        assertThat(userInfos).hasSize(1);
+        final ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+        verify(userInfoServiceMock).getUserInfo(argumentCaptor.capture());
+
+        final String actualValue = argumentCaptor.getValue();
+        assertThat(actualValue).isEqualTo(id);
+    }
+
+    @Test
+    public void testGetUserInfosVerifications_ActualValue() {
+        final String id = "anything";
+        final List<UserInfoDTO> userInfos = userServiceWithMock.getUserInfos(
+                Collections.singletonList(id)
+        );
+
+        assertThat(userInfos).hasSize(1);
+        verify(userInfoServiceMock).getUserInfo(id);
+    }
+
+    @Test
+    public void testGetUserInfosVerifications_NotCalled() {
+        verify(userInfoServiceMock, never()).getUserInfo(anyString());
     }
 }
