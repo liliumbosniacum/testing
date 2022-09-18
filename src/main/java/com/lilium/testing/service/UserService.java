@@ -32,6 +32,13 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
+    public UserDTO getJamesBond() {
+        return UserProviderHelper.getUsers().stream()
+                .filter(x -> x.getName().equals("James Bond"))
+                .findFirst()
+                .orElse(null);
+    }
+
     public List<UserDTO> getAllAdminOrModUsers() {
         return UserProviderHelper.getUsers().stream()
                 .filter(x -> x.getType() != UserType.USER)
